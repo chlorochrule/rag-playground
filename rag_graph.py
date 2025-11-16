@@ -1,3 +1,11 @@
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    message=".*verify_certs=False is insecure.*"
+)
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 from typing import List, TypedDict
 
 from langchain_core.documents import Document

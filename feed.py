@@ -1,10 +1,18 @@
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    message=".*verify_certs=False is insecure.*"
+)
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 import json
 import glob
 from pathlib import Path
 from typing import List
 
 from langchain_community.vectorstores import OpenSearchVectorSearch
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 

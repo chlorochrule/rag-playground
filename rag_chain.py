@@ -1,3 +1,13 @@
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    message=".*verify_certs=False is insecure.*"
+)
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import (
     RunnableParallel,
@@ -6,7 +16,7 @@ from langchain_core.runnables import (
 from langchain_core.output_parsers import StrOutputParser
 from langchain_community.vectorstores import OpenSearchVectorSearch
 from langchain_ollama import ChatOllama
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 OPENSEARCH_URL = "https://localhost:9200"
 OPENSEARCH_ADMIN_USER = "admin"
