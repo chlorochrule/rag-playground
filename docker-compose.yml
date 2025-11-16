@@ -1,0 +1,34 @@
+services:
+  opensearch:
+    image: "opensearchproject/opensearch:2.19.3"
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    environment:
+      discovery.type: "single-node"
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: "yourStrongPassword123!"
+  langfuse:
+    image: "langfuse/langfuse:2"
+    container_name: langfuse
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: "postgres://langfuse:password@postgres:5432/langfuse"
+      NEXTAUTH_SECRET: "dev-secret"
+      NEXTAUTH_URL: "http://localhost:3000"
+      S3_ENDPOINT: ""
+      S3_ACCESS_KEY_ID: ""
+      S3_SECRET_ACCESS_KEY: ""
+      S3_BUCKET_NAME: ""
+      S3_FORCE_PATH_STYLE: "true"
+      NODE_ENV: development
+      LANGFUSE_TELEMETRY_ENABLED: "false"
+      SALT: "this_is_a_very_strong_salt_string_change_me_1234567890"
+    ports:
+      - "3000:3000"
+  postgres:
+    image: "postgres:16"
+    environment:
+      POSTGRES_DB: langfuse
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: password
