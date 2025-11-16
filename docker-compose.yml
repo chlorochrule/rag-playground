@@ -1,34 +1,123 @@
 services:
   opensearch:
     image: "opensearchproject/opensearch:2.19.3"
+    container_name: opensearch
     ports:
       - "9200:9200"
       - "9600:9600"
     environment:
       discovery.type: "single-node"
       OPENSEARCH_INITIAL_ADMIN_PASSWORD: "yourStrongPassword123!"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
   langfuse:
-    image: "langfuse/langfuse:2"
+    image: "langfuse/langfuse:3"
     container_name: langfuse
     depends_on:
       - postgres
+      - redis
+      - clickhouse
+      - minio
     environment:
-      DATABASE_URL: "postgres://langfuse:password@postgres:5432/langfuse"
+      # langfuse
+      NODE_ENV: "development"
       NEXTAUTH_SECRET: "dev-secret"
       NEXTAUTH_URL: "http://localhost:3000"
-      S3_ENDPOINT: ""
-      S3_ACCESS_KEY_ID: ""
-      S3_SECRET_ACCESS_KEY: ""
-      S3_BUCKET_NAME: ""
-      S3_FORCE_PATH_STYLE: "true"
-      NODE_ENV: development
+      ENCRYPTION_KEY: "7113c5312b7b7f93754b328579a93aa45cf1c5fffd5517fa75959c581cce424a"
       LANGFUSE_TELEMETRY_ENABLED: "false"
       SALT: "this_is_a_very_strong_salt_string_change_me_1234567890"
+      # Postgres
+      DATABASE_URL: "postgres://langfuse:password@postgres:5432/langfuse"
+      # MinIO
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: "http://minio:9000"
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: "langfuse"
+      LANGFUSE_S3_EVENT_UPLOAD_PREFIX: "event"
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: "us-east-1"
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: "langfuse"
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: "CHANGEME_MINIO_SECRET"
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_BATCH_EXPORT_ENDPOINT: "http://minio:9000"
+      LANGFUSE_S3_BATCH_EXPORT_BUCKET: "langfuse"
+      LANGFUSE_S3_BATCH_EXPORT_PREFIX: "batch"
+      LANGFUSE_S3_BATCH_EXPORT_REGION: "us-east-1"
+      LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID: "langfuse"
+      LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY: "CHANGEME_MINIO_SECRET"
+      LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: "http://minio:9000"
+      LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: "langfuse"
+      LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: "media"
+      LANGFUSE_S3_MEDIA_UPLOAD_REGION: "us-east-1"
+      LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: "langfuse"
+      LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: "CHANGEME_MINIO_SECRET"
+      LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+      # Redis
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      REDIS_AUTH: "CHANGEME_REDIS_PASSWORD"
+      # ClickHouse
+      CLICKHOUSE_URL: "http://clickhouse:8123"
+      CLICKHOUSE_MIGRATION_URL: "clickhouse://clickhouse:9000"
+      CLICKHOUSE_DB: "langfuse"
+      CLICKHOUSE_USER: "clickhouse"
+      CLICKHOUSE_PASSWORD: "CHANGEME_CLICKHOUSE_PASSWORD"
+      CLICKHOUSE_CLUSTER_ENABLED: "false"
     ports:
       - "3000:3000"
   postgres:
     image: "postgres:16"
+    container_name: langfuse-postgres
     environment:
       POSTGRES_DB: langfuse
       POSTGRES_USER: langfuse
       POSTGRES_PASSWORD: password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+  clickhouse:
+    image: "clickhouse/clickhouse-server:24.8"
+    container_name: langfuse-clickhouse
+    environment:
+      CLICKHOUSE_DB: "langfuse"
+      CLICKHOUSE_USER: "clickhouse"
+      CLICKHOUSE_PASSWORD: "CHANGEME_CLICKHOUSE_PASSWORD"
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+  redis:
+    image: "redis:7"
+    container_name: langfuse-redis
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "CHANGEME_REDIS_PASSWORD"]
+    volumes:
+      - redis-data:/data
+  minio:
+    image: "minio/minio:latest"
+    container_name: langfuse-minio
+    command: server /data --console-address ":9090"
+    environment:
+      MINIO_ROOT_USER: "langfuse"
+      MINIO_ROOT_PASSWORD: "CHANGEME_MINIO_SECRET"
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9090:9090"
+      - "9000:9000"
+
+  create-minio-bucket:
+    image: "minio/mc:latest"
+    container_name: langfuse-minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 langfuse CHANGEME_MINIO_SECRET &&
+      mc mb -p local/langfuse || true
+      "
+
+volumes:
+  opensearch-data:
+  postgres-data:
+  clickhouse-data:
+  redis-data:
+  minio-data:
